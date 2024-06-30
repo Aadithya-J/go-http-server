@@ -1,8 +1,5 @@
 # go-http-server
 
-
-### go-server
-
 A lightweight, customizable HTTP/HTTPS server written in Go, utilizing only the `net` package. This server supports file serving, directory listing, and basic HTTP GET and POST request handling. It features command-line flag configurations for directory, port, and HTTPS settings, making it versatile and easy to deploy for various use cases.
 
 #### Command-Line Flags
