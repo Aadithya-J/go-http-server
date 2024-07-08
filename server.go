@@ -158,10 +158,8 @@ func (s *Server) handleConnection(conn net.Conn) {
 }
 func (s *Server) handleGet(conn net.Conn, req string) {
 
-	logger := log.New(os.Stdout, "server GET: ", log.LstdFlags)
-
 	path := req[4 : strings.Index(req, "HTTP")-1]
-	logger.Println("Request path:", path)
+	s.logger.Println("Request path:", path)
 	if strings.Contains(path, ".") {
 		s.serveFiles(conn, path)
 	} else {
@@ -201,10 +199,7 @@ func getContentType(ext string) string {
 	}
 }
 func (s *Server) handlePost(conn net.Conn, req string) {
-	defer func() {
-		s.logger = log.New(os.Stdout, "server : ", log.LstdFlags)
-	}()
-	s.logger = log.New(os.Stdout, "server GET: ", log.LstdFlags)
+	s.logger.Println("Received POST request")
 }
 
 func write200(conn net.Conn, textType string, body string) {
