@@ -3,11 +3,12 @@ package main
 import "flag"
 
 type Config struct {
-	Directory string
-	Port      string
-	UseHttps  bool
-	CertFile  string
-	KeyFile   string
+	Directory            string
+	Port                 string
+	UseHttps             bool
+	CertFile             string
+	KeyFile              string
+	MaxRequestsPerSecond int
 }
 
 func parseFlags() *Config {
@@ -18,6 +19,7 @@ func parseFlags() *Config {
 	flag.BoolVar(&cfg.UseHttps, "https", false, "whether to use HTTPS")
 	flag.StringVar(&cfg.CertFile, "cert", "", "the certificate file")
 	flag.StringVar(&cfg.KeyFile, "key", "", "the key file")
+	flag.IntVar(&cfg.MaxRequestsPerSecond, "max", 10, "the maximum number of requests per second")
 
 	return cfg
 }

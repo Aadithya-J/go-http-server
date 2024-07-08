@@ -19,13 +19,15 @@ type Server struct {
 	logger   *log.Logger
 	wg       sync.WaitGroup
 	quit     chan struct{}
+	limiter  *Limiter
 }
 
 func NewServer(config *Config) *Server {
 	return &Server{
-		config: config,
-		logger: log.New(os.Stdout, "server : ", log.LstdFlags),
-		quit:   make(chan struct{}),
+		config:  config,
+		logger:  log.New(os.Stdout, "server : ", log.LstdFlags),
+		quit:    make(chan struct{}),
+		limiter: NewLimiter(),
 	}
 }
 
@@ -120,6 +122,14 @@ func (s *Server) acceptConnections() {
 					continue
 				}
 			}
+			clientIP := extractClientIP(conn.RemoteAddr().String())
+
+			if !s.limiter.Allow(clientIP, s) {
+				s.logger.Printf("Rate limit exceeded for client %s\n", clientIP)
+				conn.Close()
+				continue
+			}
+
 			s.wg.Add(1)
 			go s.handleConnection(conn)
 		}
@@ -156,22 +166,27 @@ func (s *Server) handleConnection(conn net.Conn) {
 		s.logger.Println("Unsupported method")
 	}
 }
+
 func (s *Server) handleGet(conn net.Conn, req string) {
 
 	path := req[4 : strings.Index(req, "HTTP")-1]
 	s.logger.Println("Request path:", path)
 	if strings.Contains(path, ".") {
 		s.serveFiles(conn, path)
+	} else if path == "/home" {
+		s.serveFiles(conn, "index.html")
 	} else {
 		write200(conn, "text/plain", "Hello, World!")
 	}
 }
+
 func (s *Server) serveFiles(conn net.Conn, path string) {
 	fileDir := filepath.Join(s.config.Directory, path)
 	s.logger.Println("Serving file:", fileDir)
 	fileData, err := readFile(fileDir)
 	if err != nil {
 		s.logger.Println("Error reading file:", err)
+		write400(conn)
 		return
 	}
 	ext := filepath.Ext(path)
@@ -204,6 +219,11 @@ func (s *Server) handlePost(conn net.Conn, req string) {
 
 func write200(conn net.Conn, textType string, body string) {
 	response := fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: %s\r\nContent-Length: %d\r\n\r\n%s", textType, len(body), body)
+	conn.Write([]byte(response))
+}
+
+func write400(conn net.Conn) {
+	response := "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n"
 	conn.Write([]byte(response))
 }
 
