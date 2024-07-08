@@ -50,6 +50,13 @@ func (s *Server) startHTTP(address string) error {
 	return nil
 }
 
+func (s *Server) Stop() {
+	s.logger.Println("Stopping server")
+	if s.listener != nil {
+		s.listener.Close()
+	}
+}
+
 func (s *Server) acceptConnections() {
 	for {
 		conn, err := s.listener.Accept()
@@ -64,19 +71,21 @@ func (s *Server) acceptConnections() {
 
 func (s *Server) handleConnection(conn net.Conn) {
 	defer func() {
-		s.logger.Println("Closing connection :", conn.RemoteAddr())
+		s.logger.Println("Closing connection:", conn.RemoteAddr())
 		conn.Close()
 	}()
 
-	s.logger.Println("Serving new connection :", conn.RemoteAddr())
+	s.logger.Println("Serving new connection:", conn.RemoteAddr())
 	buf := make([]byte, 4096)
 	n, err := conn.Read(buf)
 	if err != nil {
-		fmt.Println("Error reading:", err)
+		s.logger.Println("Error reading:", err)
+		return
 	}
 	header := strings.Split(string(buf[:n]), "\r\n")
 	if len(header) < 1 {
 		s.logger.Println("Invalid request")
+		return
 	}
 	req := header[0]
 
@@ -90,9 +99,27 @@ func (s *Server) handleConnection(conn net.Conn) {
 }
 
 func (s *Server) handleGet(conn net.Conn, req string) {
-	s.logger.Println("Handling GET request")
+	defer func() {
+		s.logger = log.New(os.Stdout, "server : ", log.LstdFlags)
+	}()
+	s.logger = log.New(os.Stdout, "server GET: ", log.LstdFlags)
+
+	path := req[4 : strings.Index(req, "HTTP")-1]
+
+	if path == "/" {
+		write200(conn, "text/plain", "Hello, World!")
+	}
 }
 
 func (s *Server) handlePost(conn net.Conn, req string) {
-	s.logger.Println("Handling POST request")
+	defer func() {
+		s.logger = log.New(os.Stdout, "server : ", log.LstdFlags)
+	}()
+	s.logger = log.New(os.Stdout, "server GET: ", log.LstdFlags)
+
+}
+
+func write200(conn net.Conn, textType string, body string) {
+	response := fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: %s\r\nContent-Length: %d\r\n\r\n%s", textType, len(body), body)
+	conn.Write([]byte(response))
 }
