@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -82,6 +83,7 @@ func (s *Server) handleConnection(conn net.Conn) {
 		s.logger.Println("Error reading:", err)
 		return
 	}
+
 	header := strings.Split(string(buf[:n]), "\r\n")
 	if len(header) < 1 {
 		s.logger.Println("Invalid request")
@@ -99,27 +101,61 @@ func (s *Server) handleConnection(conn net.Conn) {
 }
 
 func (s *Server) handleGet(conn net.Conn, req string) {
-	defer func() {
-		s.logger = log.New(os.Stdout, "server : ", log.LstdFlags)
-	}()
-	s.logger = log.New(os.Stdout, "server GET: ", log.LstdFlags)
+
+	logger := log.New(os.Stdout, "server GET: ", log.LstdFlags)
 
 	path := req[4 : strings.Index(req, "HTTP")-1]
-
-	if path == "/" {
+	logger.Println("Request path:", path)
+	if strings.Contains(path, ".") {
+		s.serveFiles(conn, path)
+	} else {
 		write200(conn, "text/plain", "Hello, World!")
 	}
 }
+func (s *Server) serveFiles(conn net.Conn, path string) {
+	fileDir := filepath.Join(s.config.Directory, path)
+	s.logger.Println("Serving file:", fileDir)
+	fileData, err := readFile(fileDir)
+	if err != nil {
+		s.logger.Println("Error reading file:", err)
+		return
+	}
+	ext := filepath.Ext(path)
+	write200(conn, getContentType(ext), string(fileData))
+}
 
+func readFile(filename string) ([]byte, error) {
+	file, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+	return file, nil
+}
+
+func getContentType(ext string) string {
+	switch ext {
+	case ".html":
+		return "text/html"
+	case ".css":
+		return "text/css"
+	case ".js":
+		return "application/javascript"
+	default:
+		return "text/plain"
+	}
+}
 func (s *Server) handlePost(conn net.Conn, req string) {
 	defer func() {
 		s.logger = log.New(os.Stdout, "server : ", log.LstdFlags)
 	}()
 	s.logger = log.New(os.Stdout, "server GET: ", log.LstdFlags)
-
 }
 
 func write200(conn net.Conn, textType string, body string) {
 	response := fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: %s\r\nContent-Length: %d\r\n\r\n%s", textType, len(body), body)
 	conn.Write([]byte(response))
+}
+
+func (s *Server) static(dir string) {
+	s.config.Directory = dir
 }

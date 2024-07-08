@@ -12,6 +12,7 @@ func main() {
 	fmt.Println("Starting server with config", *config)
 
 	server := NewServer(config)
+	//server.static("./public") can be used to serve static files as alternative to flags
 
 	err := server.Start()
 	if err != nil {
