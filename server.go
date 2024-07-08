@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"log"
@@ -8,18 +9,23 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"time"
 )
 
 type Server struct {
 	config   *Config
 	listener net.Listener
 	logger   *log.Logger
+	wg       sync.WaitGroup
+	quit     chan struct{}
 }
 
 func NewServer(config *Config) *Server {
 	return &Server{
 		config: config,
 		logger: log.New(os.Stdout, "server : ", log.LstdFlags),
+		quit:   make(chan struct{}),
 	}
 }
 
@@ -37,49 +43,86 @@ func (s *Server) Start() error {
 		return fmt.Errorf("failed to start server: %v", err)
 	}
 
+	s.wg.Add(1)
+	go s.acceptConnections()
+
 	return nil
 }
 
 func (s *Server) startHTTP(address string) error {
 	s.logger.Println("Starting Http server on port", s.config.Port)
 	listener, err := net.Listen("tcp", address)
-	s.listener = listener
 	if err != nil {
 		return fmt.Errorf("Error starting server: %v", err)
 	}
+	s.listener = listener
 	s.logger.Println("HTTP server is ready to accept connections")
-	s.acceptConnections()
 	return nil
 }
+
 func (s *Server) startHTTPS(address string) error {
 	s.logger.Println("Starting Https server on port", s.config.Port)
 	cert, err := tls.LoadX509KeyPair(s.config.CertFile, s.config.KeyFile)
 	if err != nil {
-		log.Fatal("Error loading certificate:", err)
+		return fmt.Errorf("Error loading certificate: %v", err)
 	}
 	config := &tls.Config{Certificates: []tls.Certificate{cert}}
-	listener, err := net.Listen("tcp", address)
-	s.listener = tls.NewListener(listener, config)
+	listener, err := tls.Listen("tcp", address, config)
+	if err != nil {
+		return fmt.Errorf("Error starting HTTPS server: %v", err)
+	}
+	s.listener = listener
 	s.logger.Println("HTTPS server is ready to accept connections")
-	s.acceptConnections()
 	return nil
 }
-func (s *Server) Stop() {
-	s.logger.Println("Stopping server")
+
+func (s *Server) Stop() error {
+	close(s.quit)
+
 	if s.listener != nil {
-		s.listener.Close()
+		if err := s.listener.Close(); err != nil {
+			s.logger.Println("Error closing listener:", err)
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	done := make(chan struct{})
+	go func() {
+		s.wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("server shutdown timed out")
+	case <-done:
+		return nil
 	}
 }
 
 func (s *Server) acceptConnections() {
-	for {
-		conn, err := s.listener.Accept()
-		if err != nil {
-			s.logger.Println("Error accepting connection", err)
-			continue
-		}
-		go s.handleConnection(conn)
+	defer s.wg.Done()
 
+	for {
+		select {
+		case <-s.quit:
+			return
+		default:
+			conn, err := s.listener.Accept()
+			if err != nil {
+				select {
+				case <-s.quit:
+					return
+				default:
+					s.logger.Println("Error accepting connection", err)
+					continue
+				}
+			}
+			s.wg.Add(1)
+			go s.handleConnection(conn)
+		}
 	}
 }
 
@@ -87,6 +130,7 @@ func (s *Server) handleConnection(conn net.Conn) {
 	defer func() {
 		s.logger.Println("Closing connection:", conn.RemoteAddr())
 		conn.Close()
+		s.wg.Done()
 	}()
 
 	s.logger.Println("Serving new connection:", conn.RemoteAddr())
@@ -112,7 +156,6 @@ func (s *Server) handleConnection(conn net.Conn) {
 		s.logger.Println("Unsupported method")
 	}
 }
-
 func (s *Server) handleGet(conn net.Conn, req string) {
 
 	logger := log.New(os.Stdout, "server GET: ", log.LstdFlags)
