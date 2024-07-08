@@ -1,12 +1,26 @@
 # go-http-server
 
-A simple ,lightweight , HTTP/HTTPS server written in Go, without using the http package and utilizing only the `net` package. This server supports file serving, directory listing, and basic HTTP GET and POST request handling. It features command-line flag configurations for directory, port, and HTTPS settings, making it versatile and easy to deploy for various use cases.
+This project implements HTTP and HTTPS servers using Go's standard libraries (net and crypto/tls). It serves static files, handles basic HTTP GET requests, and logs request details. Configurable via command-line flags for port, directory, and optional HTTPS with custom SSL/TLS certificates. Ideal for educational purposes to explore fundamental server concepts.
+
+To run the http server with default config 
+```bash
+go run main.go config.go server.go --dir=./public --port=3000
+```
+To run the https server generate keys using openssl and include the paths in flag
+```bash
+go run main.go config.go server.go --dir=./public --port=3000 --https --cert=./tlsCert/cert.pem --key=./tlsCert/key.pem
+```
+server runs in 
+```
+http://localhost:3000/index.html
+https://localhost:3000/index.html
+```
 
 #### Command-Line Flags
 
 | Flag         | Description                      | Default Value |
 |--------------|----------------------------------|---------------|
-| `--directory`| Directory to serve files from    | `.`           |
+| `--dir`| Directory to serve files from    | `.`           |
 | `--port`     | Port to bind the server to       | `4221`        |
 | `--https`    | Enable HTTPS (requires cert and key) | `false`       |
 | `--cert`     | Path to SSL certificate file     | `cert.pem`    |
