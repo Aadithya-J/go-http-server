@@ -1,6 +1,7 @@
 package main
 
 import (
+	"compress/gzip"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -160,8 +161,6 @@ func (s *Server) handleConnection(conn net.Conn) {
 
 	if strings.HasPrefix(req, "GET") {
 		s.handleGet(conn, req)
-	} else if strings.HasPrefix(req, "POST") {
-		s.handlePost(conn, req)
 	} else {
 		s.logger.Println("Unsupported method")
 	}
@@ -190,7 +189,19 @@ func (s *Server) serveFiles(conn net.Conn, path string) {
 		return
 	}
 	ext := filepath.Ext(path)
-	write200(conn, getContentType(ext), string(fileData))
+	contentType := getContentType(ext)
+
+	if strings.Contains(conn.RemoteAddr().String(), "gzip") {
+		write200(conn, contentType, "")
+		gw := gzip.NewWriter(conn)
+		defer gw.Close()
+
+		if _, err := gw.Write(fileData); err != nil {
+			log.Fatal("Gzip error:", err)
+		}
+	} else {
+		write200(conn, contentType, string(fileData))
+	}
 }
 
 func readFile(filename string) ([]byte, error) {
@@ -212,9 +223,6 @@ func getContentType(ext string) string {
 	default:
 		return "text/plain"
 	}
-}
-func (s *Server) handlePost(conn net.Conn, req string) {
-	s.logger.Println("Received POST request")
 }
 
 func write200(conn net.Conn, textType string, body string) {
