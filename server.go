@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
 	"log"
 	"net"
@@ -27,7 +28,7 @@ func (s *Server) Start() error {
 	var err error
 
 	if s.config.UseHttps {
-		return fmt.Errorf("HTTPS not implemented")
+		err = s.startHTTPS(address)
 	} else {
 		err = s.startHTTP(address)
 	}
@@ -50,7 +51,19 @@ func (s *Server) startHTTP(address string) error {
 	s.acceptConnections()
 	return nil
 }
-
+func (s *Server) startHTTPS(address string) error {
+	s.logger.Println("Starting Https server on port", s.config.Port)
+	cert, err := tls.LoadX509KeyPair(s.config.CertFile, s.config.KeyFile)
+	if err != nil {
+		log.Fatal("Error loading certificate:", err)
+	}
+	config := &tls.Config{Certificates: []tls.Certificate{cert}}
+	listener, err := net.Listen("tcp", address)
+	s.listener = tls.NewListener(listener, config)
+	s.logger.Println("HTTPS server is ready to accept connections")
+	s.acceptConnections()
+	return nil
+}
 func (s *Server) Stop() {
 	s.logger.Println("Stopping server")
 	if s.listener != nil {
