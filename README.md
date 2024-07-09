@@ -12,8 +12,8 @@ go run main.go config.go server.go --dir=./public --port=3000 --https --cert=./t
 ```
 server runs in 
 ```
-http://localhost:3000/index.html
-https://localhost:3000/index.html
+http://localhost:3000/home
+https://localhost:3000/home
 ```
 
 #### Command-Line Flags
