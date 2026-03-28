@@ -25,3 +25,60 @@ https://localhost:3000/home
 | `--https`    | Enable HTTPS (requires cert and key) | `false`       |
 | `--cert`     | Path to SSL certificate file     | `cert.pem`    |
 | `--key`      | Path to SSL key file             | `key.pem`     |
+
+
+
+
+test
+
+#### Command-Line Flags
+
+| Flag         | Description                      | Default Value |
+|--------------|----------------------------------|---------------|
+| `--dir`| Directory to serve files from    | `.`           |
+| `--port`     | Port to bind the server to       | `4221`        |
+| `--https`    | Enable HTTPS (requires cert and key) | `false`       |
+| `--cert`     | Path to SSL certificate file     | `cert.pem`    |
+| `--key`      | Path to SSL key file             | `key.pem`     |
+
+#### Command-Line Flags
+
+To run the http server with default config 
+```bash
+go run main.go config.go server.go --dir=./public --port=3000
+```
+To run the https server generate keys using openssl and include the paths in flag
+```bash
+go run main.go config.go server.go --dir=./public --port=3000 --https --cert=./tlsCert/cert.pem --key=./tlsCert/key.pem
+```
+server runs in 
+```
+http://localhost:3000/home
+https://localhost:3000/home
+
+| Flag         | Description                      | Default Value |
+|--------------|----------------------------------|---------------|
+| `--dir`| Directory to serve files from    | `.`           |
+| `--port`     | Port to bind the server to       | `4221`        |
+| `--https`    | Enable HTTPS (requires cert and key) | `false`       |
+| `--cert`     | Path to SSL certificate file     | `cert.pem`    |
+| `--key`      | Path to SSL key file             | `key.pem`     |
+#### Command-Line Flags
+
+| Flag         | Description                      | Default Value |
+|--------------|----------------------------------|---------------|
+| `--dir`| Directory to serve files from    | `.`           |
+| `--port`     | Port to bind the server to       | `4221`        |
+| `--https`    | Enable HTTPS (requires cert and key) | `false`       |
+| `--cert`     | Path to SSL certificate file     | `cert.pem`    |
+| `--key`      | Path to SSL key file             | `key.pem`     |
+
+#### Command-Line Flags
+
+| Flag         | Description                      | Default Value |
+|--------------|----------------------------------|---------------|
+| `--dir`| Directory to serve files from    | `.`           |
+| `--port`     | Port to bind the server to       | `4221`        |
+| `--https`    | Enable HTTPS (requires cert and key) | `false`       |
+| `--cert`     | Path to SSL certificate file     | `cert.pem`    |
+| `--key`      | Path to SSL key file             | `key.pem`     |
